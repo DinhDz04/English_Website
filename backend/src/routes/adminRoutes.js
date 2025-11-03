@@ -82,4 +82,10 @@ router.put("/exercises/:id", exerciseController.updateExercise);
 router.delete("/exercises/:id", exerciseController.deleteExercise);
 router.post("/exercises/bulk-delete", exerciseController.bulkDeleteExercises);
 
+// Thêm vào adminRoutes.js
+router.post("/exercises/fill-blank", exerciseController.createFillBlankExercise);
+router.get("/topics/:topicId/export-template", exerciseController.exportExercisesTemplate);
+router.get("/topics/:topicId/export-exercises", exerciseController.exportExercisesData);
+router.post("/topics/:topicId/import-exercises", exerciseController.bulkCreateFillBlankExercises);
+
 module.exports = router;

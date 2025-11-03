@@ -117,6 +117,150 @@ class Exercise {
     if (error) throw error;
     return count || 0;
   }
+
+  // backend/src/models/Exercise.js - Thêm vào class Exercise
+static async findByTopicWithWords(topicId, options = {}) {
+  const { page = 1, limit = 50 } = options;
+
+  // First get words from the topic
+  const { data: words, error: wordsError } = await supabase
+    .from('words')
+    .select('*')
+    .eq('topic_id', topicId)
+    .order('created_at', { ascending: false });
+
+  if (wordsError) throw wordsError;
+
+  // Then get existing exercises
+  const { data: exercises, error: exercisesError } = await supabase
+    .from('exercises')
+    .select('*')
+    .eq('topic_id', topicId);
+
+  if (exercisesError) throw exercisesError;
+
+  return {
+    words,
+    exercises,
+    pagination: {
+      total: words.length,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(words.length / limit),
+    },
+  };
+}
+
+// Generate exercises from words
+static async generateFromWords(topicId, exerciseType) {
+  const { data: words, error } = await supabase
+    .from('words')
+    .select('*')
+    .eq('topic_id', topicId);
+
+  if (error) throw error;
+
+  const exercises = words.map((word, index) => {
+    let exercise = {
+      topic_id: topicId,
+      word_id: word.id,
+      type: exerciseType,
+      difficulty: word.difficulty,
+      points: 10,
+      sort_order: index,
+      created_at: new Date().toISOString()
+    };
+
+    switch (exerciseType) {
+      case 'matching':
+        exercise.question = `Nối từ "${word.word}" với nghĩa phù hợp`;
+        exercise.correct_answer = word.meaning;
+        break;
+      case 'word_ordering':
+        // For word ordering, we might use the example sentence or create from word
+        const wordsArray = word.word.split(' ').concat(word.meaning.split(' '));
+        exercise.question = `Sắp xếp các từ sau thành câu/cụm từ có nghĩa`;
+        exercise.options = wordsArray.sort(() => Math.random() - 0.5);
+        exercise.correct_answer = wordsArray.join(',');
+        break;
+      case 'fill_blank':
+        exercise.question = `Điền từ thích hợp vào chỗ trống: "${word.example || `The word means: ${word.meaning}`}"`;
+        exercise.correct_answer = word.word;
+        break;
+    }
+
+    return exercise;
+  });
+
+  // Bulk insert generated exercises
+  const { data, error: insertError } = await supabase
+    .from('exercises')
+    .insert(exercises)
+    .select();
+
+  if (insertError) throw insertError;
+  return data;
+}
+
+// backend/src/models/Exercise.js - Thêm vào class Exercise
+static async createFillBlankExercise(exerciseData) {
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert([{
+      ...exerciseData,
+      type: 'fill_blank'
+    }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+static async bulkCreateFillBlankExercises(exercisesData) {
+  const exercisesWithType = exercisesData.map(exercise => ({
+    ...exercise,
+    type: 'fill_blank'
+  }));
+
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert(exercisesWithType)
+    .select();
+
+  if (error) throw error;
+  return data;
+}
+
+static async getExercisesForExport(topicId) {
+  const { data, error } = await supabase
+    .from('exercises')
+    .select(`
+      *,
+      words (
+        word,
+        meaning,
+        example
+      )
+    `)
+    .eq('topic_id', topicId)
+    .eq('type', 'fill_blank')
+    .order('sort_order', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+static async getWordsForTemplate(topicId) {
+  const { data, error } = await supabase
+    .from('words')
+    .select('id, word, meaning, example, difficulty')
+    .eq('topic_id', topicId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
 }
 
 module.exports = Exercise;

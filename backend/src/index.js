@@ -15,6 +15,7 @@ app.get('/', (req, res) => {
   res.send('English backend is running!');
 });
 
+
 // Auth routes
 app.use('/api/auth', authRoutes);
 
