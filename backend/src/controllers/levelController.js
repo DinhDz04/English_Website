@@ -46,7 +46,8 @@ exports.createLevel = async (req, res) => {
       level_number,
       name,
       description,
-      color_gradient,
+      color_start,
+      color_end,
       required_points,
       sort_order,
     } = req.body;
@@ -61,7 +62,8 @@ exports.createLevel = async (req, res) => {
       level_number,
       name,
       description,
-      color_gradient,
+      color_start,
+      color_end,
       required_points: required_points || 0,
       sort_order,
     };

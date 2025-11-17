@@ -52,6 +52,14 @@ exports.createWord = async (req, res) => {
       });
     }
 
+    // KIỂM TRA TỪ ĐÃ TỒN TẠI TRONG TOÀN BỘ DATABASE CHƯA
+    const wordExists = await Word.checkWordExists(word);
+    if (wordExists) {
+      return res.status(400).json({
+        message: `Từ "${word}" đã tồn tại trong hệ thống`,
+      });
+    }
+
     const wordData = {
       word: word.trim(),
       pronunciation: pronunciation?.trim(),
@@ -78,8 +86,20 @@ exports.createWord = async (req, res) => {
 exports.updateWord = async (req, res) => {
   try {
     const { id } = req.params;
-    const word = await Word.update(id, req.body);
-    res.json({ word, message: "Cập nhật từ vựng thành công" });
+    const { word } = req.body;
+
+    // KIỂM TRA TỪ ĐÃ TỒN TẠI TRONG TOÀN BỘ DATABASE CHƯA (trừ từ hiện tại)
+    if (word) {
+      const wordExists = await Word.checkWordExists(word, id);
+      if (wordExists) {
+        return res.status(400).json({
+          message: `Từ "${word}" đã tồn tại trong hệ thống`,
+        });
+      }
+    }
+
+    const updatedWord = await Word.update(id, req.body);
+    res.json({ word: updatedWord, message: "Cập nhật từ vựng thành công" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi khi cập nhật từ vựng" });
@@ -141,10 +161,28 @@ exports.importWords = async (req, res) => {
       return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
     }
 
+    // KIỂM TRA TỪ TRÙNG TRONG TOÀN BỘ DATABASE
+    const allExistingWords = await Word.findAllWords();
+    const existingWordSet = new Set(allExistingWords.map(w => w.word.toLowerCase()));
+
     // Validate and prepare data
-    const validWords = words
-      .filter((w) => w.word && w.meaning)
-      .map((w) => ({
+    const validWords = [];
+    const duplicateWords = [];
+    const skippedWords = [];
+
+    for (const w of words) {
+      if (!w.word || !w.meaning) {
+        skippedWords.push(w.word || 'Unknown');
+        continue;
+      }
+
+      const wordLower = w.word.trim().toLowerCase();
+      if (existingWordSet.has(wordLower)) {
+        duplicateWords.push(w.word);
+        continue;
+      }
+
+      validWords.push({
         topic_id,
         word: w.word.trim(),
         pronunciation: w.pronunciation?.trim() || null,
@@ -152,11 +190,16 @@ exports.importWords = async (req, res) => {
         example: w.example?.trim() || null,
         difficulty: w.difficulty?.trim() || "easy",
         audio_url: w.audio_url || null,
-      }));
+      });
+
+      existingWordSet.add(wordLower);
+    }
 
     if (validWords.length === 0) {
       return res.status(400).json({
         message: "Không có từ vựng hợp lệ để import",
+        duplicates: duplicateWords,
+        skipped: skippedWords,
       });
     }
 
@@ -168,7 +211,10 @@ exports.importWords = async (req, res) => {
     res.json({
       message: `Import thành công ${imported.length} từ vựng`,
       imported: imported.length,
-      skipped: words.length - validWords.length,
+      duplicates: duplicateWords.length,
+      skipped: skippedWords.length,
+      duplicateWords: duplicateWords,
+      skippedWords: skippedWords,
     });
   } catch (err) {
     console.error(err);
@@ -189,5 +235,28 @@ exports.exportWords = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Lỗi khi xuất từ vựng" });
+  }
+};
+
+// Get all words (for exercise generation)
+// Get all words (for exercise generation)
+exports.getAllWords = async (req, res) => {
+  try {
+    const { page, limit, search, difficulty } = req.query;
+
+    // Sử dụng method mới trong Word model để lấy tất cả từ
+    const result = await Word.findAll({
+      page: parseInt(page) || 1,
+      limit: parseInt(limit) || 2000, // TĂNG LIMIT LÊN ĐỂ LẤY NHIỀU TỪ HƠN
+      search: search || '',
+      difficulty: difficulty || ''
+    });
+
+    
+    
+    res.json(result);
+  } catch (err) {
+    console.error('Error fetching all words:', err);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách từ vựng" });
   }
 };

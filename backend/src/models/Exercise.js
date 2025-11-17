@@ -220,7 +220,9 @@ static async createFillBlankExercise(exerciseData) {
 static async bulkCreateFillBlankExercises(exercisesData) {
   const exercisesWithType = exercisesData.map(exercise => ({
     ...exercise,
-    type: 'fill_blank'
+    type: 'fill_blank',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   }));
 
   const { data, error } = await supabase
@@ -228,7 +230,11 @@ static async bulkCreateFillBlankExercises(exercisesData) {
     .insert(exercisesWithType)
     .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Supabase bulk insert error:', error);
+    throw error;
+  }
+  
   return data;
 }
 

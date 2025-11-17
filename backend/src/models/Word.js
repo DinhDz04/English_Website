@@ -56,6 +56,10 @@ class Word {
 
   // Create word
   static async create(wordData) {
+     const processedData = {
+    ...wordData,
+    word: wordData.word.toLowerCase().trim() // LƯU DƯỚI DẠNG CHỮ THƯỜNG
+  };
     const { data, error } = await supabase
       .from('words')
       .insert([wordData])
@@ -68,6 +72,10 @@ class Word {
 
   // Update word
   static async update(id, wordData) {
+     const processedData = {
+    ...wordData,
+    word: wordData.word.toLowerCase().trim() // LƯU DƯỚI DẠNG CHỮ THƯỜNG
+  };
     const { data, error } = await supabase
       .from('words')
       .update(wordData)
@@ -145,6 +153,66 @@ class Word {
     if (error) throw error;
     return data;
   }
+static async checkWordExists(word, excludeId = null) {
+  const wordLower = word.toLowerCase().trim(); // CHUYỂN THÀNH CHỮ THƯỜNG
+  
+  let query = supabase
+    .from('words')
+    .select('id, word, topic_id')
+    .eq('word', wordLower); // SO SÁNH VỚI CHỮ THƯỜNG
+
+  if (excludeId) {
+    query = query.neq('id', excludeId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.length > 0;
 }
+static async findAllWords() {
+  const { data, error } = await supabase
+    .from('words')
+    .select('word');
+
+  if (error) throw error;
+  return data;
+}
+// Get all words (for exercise generation)
+static async findAll(options = {}) {
+  const { page = 1, limit = 2000, search = '', difficulty } = options;
+
+  let query = supabase
+    .from('words')
+    .select('*', { count: 'exact' });
+
+  if (search) {
+    query = query.or(`word.ilike.%${search}%,meaning.ilike.%${search}%`);
+  }
+
+  if (difficulty) {
+    query = query.eq('difficulty', difficulty);
+  }
+
+  // BỎ PAGINATION ĐỂ LẤY TẤT CẢ TỪ
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  console.log(`Database returned ${data.length} words`); // THÊM LOG
+
+  return {
+    words: data,
+    pagination: {
+      total: count,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(count / limit),
+    },
+  };
+}
+
+}
+
 
 module.exports = Word;

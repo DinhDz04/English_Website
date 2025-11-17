@@ -1,4 +1,6 @@
 const Topic = require("../models/Topic");
+const fs = require("fs");
+const path = require("path");
 
 // Get all topics
 exports.getAllTopics = async (req, res) => {
@@ -41,11 +43,18 @@ exports.createTopic = async (req, res) => {
     } = req.body;
 
     if (!name || !level_id) {
+      // Xóa file nếu có lỗi
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
       return res.status(400).json({ 
         message: "Tên và level không được để trống" 
       });
     }
 
+     const image_url = req.file 
+      ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+      : null;
     const topicData = {
       name,
       description,
@@ -55,11 +64,16 @@ exports.createTopic = async (req, res) => {
       required_level: required_level || 1,
       sort_order,
       estimated_minutes,
+      image_url,
     };
 
     const topic = await Topic.create(topicData);
     res.status(201).json({ topic, message: "Tạo topic thành công" });
   } catch (err) {
+    // Xóa file nếu có lỗi
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
     console.error(err);
     res.status(500).json({ message: "Lỗi khi tạo topic" });
   }
@@ -69,9 +83,33 @@ exports.createTopic = async (req, res) => {
 exports.updateTopic = async (req, res) => {
   try {
     const { id } = req.params;
-    const topic = await Topic.update(id, req.body);
+    
+    // Lấy topic cũ để xóa ảnh cũ nếu có
+    const oldTopic = await Topic.findById(id);
+    
+    const updateData = { ...req.body };
+    
+    // Nếu có file mới, thêm image_url vào updateData
+    if (req.file) {
+       updateData.image_url = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      
+      // Xóa ảnh cũ nếu tồn tại
+       if (oldTopic && oldTopic.image_url) {
+        const oldFilename = oldTopic.image_url.split('/').pop();
+        const oldImagePath = path.join(__dirname, '../uploads', oldFilename);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
+      }
+    }
+
+    const topic = await Topic.update(id, updateData);
     res.json({ topic, message: "Cập nhật topic thành công" });
   } catch (err) {
+    // Xóa file mới nếu có lỗi
+    if (req.file) {
+      fs.unlinkSync(req.file.path);
+    }
     console.error(err);
     res.status(500).json({ message: "Lỗi khi cập nhật topic" });
   }
