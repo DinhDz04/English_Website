@@ -9,10 +9,10 @@ const AutoQuestController = require("../controllers/AutoQuestController");
 const topicController = require("../controllers/topicController");
 const levelController = require("../controllers/levelController");
 const wordController = require("../controllers/wordController");
-const shopController = require("../controllers/shopController");
 const achievementController = require("../controllers/achievementController");
 const statsController = require("../controllers/statsController");
 const exerciseController = require("../controllers/exerciseController");
+const itemController = require("../controllers/itemController");
 
 const router = express.Router();
 
@@ -57,24 +57,6 @@ router.post("/words/bulk-delete", wordController.bulkDeleteWords);
 router.post("/words/import", wordController.importWords);
 router.get("/topics/:topicId/words/export", wordController.exportWords);
 
-// ========== SHOP ROUTES ==========
-router.get("/shop/items", shopController.getAllItems);
-router.get("/shop/items/:id", shopController.getItemById);
-router.post("/shop/items", shopController.createItem);
-router.put("/shop/items/:id", shopController.updateItem);
-router.delete("/shop/items/:id", shopController.deleteItem);
-
-// ========== SHOP CATEGORY ROUTES ==========
-router.get("/shop/categories", shopController.getCategories);
-router.post("/shop/categories", shopController.createCategory);
-router.put("/shop/categories/:id", shopController.updateCategory);
-router.delete("/shop/categories/:id", shopController.deleteCategory);
-router.get("/shop/effects", shopController.getItemEffects);
-router.get("/shop/instant-items", shopController.getInstantUseItems);
-router.put("/shop/items/:id/payment", shopController.updatePaymentInfo);
-router.get("/shop/items/payment-type", shopController.getItemsByPaymentType);
-router.get("/shop/payment-stats", shopController.getPaymentStats);
-
 // ========== ACHIEVEMENT ROUTES ==========
 router.get("/achievements", achievementController.getAllAchievements);
 router.get("/achievements/:id", achievementController.getAchievementById);
@@ -117,5 +99,15 @@ router.post("/quests/bulk-create", questController.bulkCreateQuests);
 router.post("/quests/initialize-system", AutoQuestController.initializeSystemQuests)
 router.post("/quests/auto-update", AutoQuestController.updateAutoQuests);
 router.get("/quests/auto-preview", AutoQuestController.previewAutoQuests);
+
+router.get("/items", itemController.getAllItems);
+router.get("/items/stats", itemController.getItemStats);
+router.get("/items/config", itemController.getItemConfig);
+router.get("/items/categories/:categoryId/types", itemController.getTypesByCategory);
+router.get("/items/:id", itemController.getItemById);
+router.post("/items", itemController.createItem);
+router.put("/items/:id", itemController.updateItem);
+router.delete("/items/:id", itemController.deleteItem);
+router.post("/items/bulk-delete", itemController.bulkDeleteItems);
 
 module.exports = router;
