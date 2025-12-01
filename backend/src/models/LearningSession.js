@@ -1,44 +1,11 @@
-// backend/src/models/LearningSession.js
 const { supabase } = require('../utils/supabase');
 
 class LearningSession {
-  // Lấy danh sách từ chưa học của user trong topic
-  static async getAvailableWords(userId, topicId) {
-    const { data: allWords, error: wordsError } = await supabase
-      .from('words')
-      .select('id, word, meaning, pronunciation, example, difficulty, audio_url')
-      .eq('topic_id', topicId);
-
-    if (wordsError) throw wordsError;
-
-    const { data: learnedWords, error: learnedError } = await supabase
-      .from('user_learned_words')
-      .select('word_id')
-      .eq('user_id', userId);
-
-    if (learnedError) throw learnedError;
-
-    const learnedWordIds = new Set(learnedWords.map(w => w.word_id));
-    const availableWords = allWords.filter(w => !learnedWordIds.has(w.id));
-
-    return {
-      total: allWords.length,
-      learned: learnedWords.length,
-      available: availableWords
-    };
-  }
-
-  // Tạo session học mới
-  static async createSession(userId, topicId, selectedWordIds) {
+  // Tạo session mới
+  static async create(sessionData) {
     const { data, error } = await supabase
-      .from('user_learning_sessions')
-      .insert([{
-        user_id: userId,
-        topic_id: topicId,
-        selected_words: selectedWordIds,
-        total_words: selectedWordIds.length,
-        status: 'in_progress'
-      }])
+      .from('learning_sessions')
+      .insert([sessionData])
       .select()
       .single();
 
@@ -46,56 +13,24 @@ class LearningSession {
     return data;
   }
 
-  // Lấy bài tập fill_blank cho từ
-  static async getExerciseForWord(wordId, topicId) {
+  // Lấy session theo ID
+  static async findById(id) {
     const { data, error } = await supabase
-      .from('exercises')
+      .from('learning_sessions')
       .select('*')
-      .eq('word_id', wordId)
-      .eq('type', 'fill_blank')
-      .maybeSingle();
+      .eq('id', id)
+      .single();
 
     if (error) throw error;
     return data;
-  }
-
-  // Lưu câu trả lời
-  static async saveAnswer(sessionId, wordId, exerciseType, isCorrect, timeTaken) {
-    const { error } = await supabase
-      .from('session_answers')
-      .insert([{
-        session_id: sessionId,
-        word_id: wordId,
-        exercise_type: exerciseType,
-        is_correct: isCorrect,
-        time_taken_seconds: timeTaken
-      }]);
-
-    if (error) throw error;
-    return true;
-  }
-
-  // Đánh dấu từ đã học
-  static async markWordAsLearned(userId, wordId) {
-    const { error } = await supabase
-      .from('user_learned_words')
-      .insert([{
-        user_id: userId,
-        word_id: wordId
-      }])
-      .on_conflict('user_id,word_id')
-      .ignore();
-
-    if (error) throw error;
-    return true;
   }
 
   // Cập nhật session
-  static async updateSession(sessionId, updates) {
+  static async update(id, updateData) {
     const { data, error } = await supabase
-      .from('user_learning_sessions')
-      .update(updates)
-      .eq('id', sessionId)
+      .from('learning_sessions')
+      .update(updateData)
+      .eq('id', id)
       .select()
       .single();
 
@@ -103,35 +38,34 @@ class LearningSession {
     return data;
   }
 
-  // Lấy thông tin session
-  static async getSession(sessionId) {
-    const { data, error } = await supabase
-      .from('user_learning_sessions')
-      .select(`
-        *,
-        topics (
-          id,
-          name,
-          icon,
-          description
-        )
-      `)
-      .eq('id', sessionId)
-      .single();
+  // Lấy sessions của user
+  static async findByUser(userId, options = {}) {
+    const { page = 1, limit = 20, status } = options;
+    
+    let query = supabase
+      .from('learning_sessions')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data, error, count } = await query
+      .range((page - 1) * limit, page * limit - 1);
 
     if (error) throw error;
-    return data;
-  }
 
-  // Lấy từ theo IDs
-  static async getWordsByIds(wordIds) {
-    const { data, error } = await supabase
-      .from('words')
-      .select('*')
-      .in('id', wordIds);
-
-    if (error) throw error;
-    return data;
+    return {
+      sessions: data,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
+      },
+    };
   }
 }
 

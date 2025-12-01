@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 
+
 // Verify JWT token
 exports.authenticate = (req, res, next) => {
   try {

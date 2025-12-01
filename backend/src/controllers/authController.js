@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { supabase } = require("../utils/supabase");
 const { OAuth2Client } = require("google-auth-library");
+const Quest = require('../models/Quest'); // DI CHUYỂN LÊN TRÊN
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -55,6 +56,15 @@ exports.register = async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    // 🎯 KHỞI TẠO QUEST CHO USER MỚI
+    try {
+      await Quest.initializeDailyQuests(data.id);
+      console.log(`Đã khởi tạo daily quests cho user: ${data.id}`);
+    } catch (questError) {
+      console.error('Lỗi khi khởi tạo quests:', questError);
+      // KHÔNG throw error ở đây để không ảnh hưởng đến đăng ký
+    }
 
     const token = generateToken(data);
     
@@ -151,6 +161,14 @@ exports.googleLogin = async (req, res) => {
 
       if (insertError) throw insertError;
       user = newUser;
+
+      // 🎯 KHỞI TẠO QUEST CHO USER MỚI (GOOGLE)
+      try {
+        await Quest.initializeDailyQuests(user.id);
+        console.log(`Đã khởi tạo daily quests cho Google user: ${user.id}`);
+      } catch (questError) {
+        console.error('Lỗi khi khởi tạo quests Google user:', questError);
+      }
     }
 
     const jwtToken = generateToken(user);
