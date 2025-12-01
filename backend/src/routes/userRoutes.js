@@ -61,6 +61,15 @@ router.get("/review/learned-words", ReviewController.getLearnedWords);
 
 router.use("/leaderboard", leaderboardRoutes);
 
+router.post("/review/sessions", ReviewController.createReviewSession);
 
+// Lấy danh sách bài ôn tập
+router.get("/review/sessions", ReviewController.getReviewSessions);
+
+// Lấy chi tiết bài ôn tập
+router.get("/review/sessions/:sessionId", ReviewController.getReviewSession);
+
+// Xóa bài ôn tập
+router.delete("/review/sessions/:sessionId", ReviewController.deleteReviewSession);
 
 module.exports = router;

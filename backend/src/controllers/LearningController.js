@@ -209,63 +209,113 @@ class LearningController {
   }
 
   // ==================== LẤY BÀI TẬP AI ====================
-  static async getAIExercise(req, res) {
-    try {
-      const { sessionId, wordId, exerciseType } = req.query;
-      const userId = req.user.id;
+  // backend/src/controllers/LearningController.js - CHỈ SỬA PHẦN getAIExercise
 
-      // Lấy từ vựng
-      const { data: word } = await supabase
-        .from('words')
-        .select('*')
-        .eq('id', wordId)
-        .single();
+static async getAIExercise(req, res) {
+  try {
+    const { sessionId, wordId, exerciseType } = req.query;
+    const userId = req.user.id;
 
-      if (!word) return res.status(404).json({ error: 'Word not found' });
+    console.log('🎯 getAIExercise called with:', { sessionId, wordId, exerciseType });
 
-      // Tạo bài tập bằng AI
-      const exercise = await AIService.generateExercise(
-        word.word,
-        word.meaning,
-        word.example,
-        exerciseType
-      );
-      if (exercise.id) delete exercise.id;
-      const exerciseId = `ex_${sessionId}_${wordId}_${exerciseType}_${Date.now()}`;
-
-      // Lưu exercise tạm thời
-      await supabase.from('temp_exercises').insert([{
-        
-        id: exerciseId,
-        session_id: sessionId,
-        user_id: userId,
-        word_id: wordId,
-        exercise_type: exerciseType,
-        exercise_data: exercise,
-        created_at: new Date().toISOString()
-      }]);
-      res.json({
-        exercise: {
-          id: exerciseId,
-          type: exercise.type,
-          question: exercise.question,
-          options: exercise.options || [],
-          words: exercise.words || [],
-          word_id: wordId,
-          word_data: {
-            word: word.word,
-            meaning: word.meaning,
-            example: word.example,
-            pronunciation: word.pronunciation
-          }
-        }
+    // 🔧 FIX: Kiểm tra exerciseType có được truyền vào không
+    if (!exerciseType) {
+      return res.status(400).json({ 
+        error: 'exerciseType is required',
+        received: { sessionId, wordId, exerciseType }
       });
-   
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({ error: 'Failed to generate exercise: ' + error.message });
     }
+
+    // Lấy session để lấy tất cả words (dùng cho distractor)
+    const { data: session } = await supabase
+      .from('learning_sessions')
+      .select('word_ids')
+      .eq('id', sessionId)
+      .single();
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Lấy tất cả từ trong session (để tạo distractor)
+    const { data: allWords } = await supabase
+      .from('words')
+      .select('id, word, meaning')
+      .in('id', session.word_ids);
+
+    // Lấy từ vựng hiện tại
+    const { data: word } = await supabase
+      .from('words')
+      .select('*')
+      .eq('id', wordId)
+      .single();
+
+    if (!word) {
+      return res.status(404).json({ error: 'Word not found' });
+    }
+
+    console.log(`📝 Creating ${exerciseType} exercise for word: ${word.word}`);
+
+    // 🔧 FIX: Truyền exerciseType vào AIService
+    const exercise = await AIService.generateExercise(
+      word.word,
+      word.meaning,
+      word.example,
+      word.pronunciation,
+      exerciseType, // ← QUAN TRỌNG: Phải truyền exerciseType
+      allWords || [] // ← Truyền tất cả words để tạo distractor
+    );
+
+    // Xóa id cũ nếu có
+    if (exercise.id) delete exercise.id;
+    const exerciseId = `ex_${sessionId}_${wordId}_${exerciseType}_${Date.now()}`;
+
+    // Lưu exercise tạm thời
+    await supabase.from('temp_exercises').insert([{
+      id: exerciseId,
+      session_id: sessionId,
+      user_id: userId,
+      word_id: wordId,
+      exercise_type: exerciseType,
+      exercise_data: exercise,
+      created_at: new Date().toISOString()
+    }]);
+
+    console.log(`✅ Exercise created successfully:`, {
+      exerciseId,
+      type: exercise.type,
+      hasOptions: !!exercise.options,
+      hasWords: !!exercise.words
+    });
+
+    res.json({
+      exercise: {
+        id: exerciseId,
+        type: exercise.type,
+        question: exercise.question,
+        options: exercise.options || [],
+        words: exercise.words || [],
+        word_id: wordId,
+        hint: exercise.hint,
+        difficulty: exercise.difficulty,
+        word_data: {
+          word: word.word,
+          meaning: word.meaning,
+          example: word.example,
+          pronunciation: word.pronunciation
+        }
+      }
+    });
+ 
+  } catch (error) {
+    console.error('❌ getAIExercise error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate exercise',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
+}
 
 
 // backend/src/controllers/LearningController.js

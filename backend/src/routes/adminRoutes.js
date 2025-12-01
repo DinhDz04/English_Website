@@ -10,8 +10,7 @@ const topicController = require("../controllers/topicController");
 const levelController = require("../controllers/levelController");
 const wordController = require("../controllers/wordController");
 const statsController = require("../controllers/statsController");
-const exerciseController = require("../controllers/exerciseController");
-const settingsController = require("../controllers/settingsController");
+
 
 const router = express.Router();
 
@@ -58,23 +57,6 @@ router.get("/topics/:topicId/words/export", wordController.exportWords);
 
 
 
-
-
-router.get("/topics/:topicId/exercises", exerciseController.getExercisesByTopic);
-router.get("/exercises/:id", exerciseController.getExerciseById);
-router.post("/exercises", exerciseController.createExercise);
-router.put("/exercises/:id", exerciseController.updateExercise);
-router.delete("/exercises/:id", exerciseController.deleteExercise);
-router.post("/exercises/bulk-delete", exerciseController.bulkDeleteExercises);
-router.get('/topics/:topicId/words-for-ai', exerciseController.getWordsForAIGeneration);
-router.post('/topics/:topicId/generate-ai-exercises', exerciseController.generateAIExercises);
-
-// Thêm vào adminRoutes.js
-router.post("/exercises/fill-blank", exerciseController.createFillBlankExercise);
-router.get("/topics/:topicId/export-template", exerciseController.exportExercisesTemplate);
-router.get("/topics/:topicId/export-exercises", exerciseController.exportExercisesData);
-router.post("/topics/:topicId/import-exercises", exerciseController.bulkCreateFillBlankExercises);
-
 router.get("/quests", QuestController.getAllQuests);
 router.get("/quests/stats", QuestController.getQuestStats);
 router.get("/quests/:id", QuestController.getQuestById);
@@ -109,14 +91,8 @@ router.post("/quests/sync-all-auto", AutoQuestController.syncAllQuestsToUsers);
 
 
 
-router.get('/settings',settingsController.getAllSettings);
-router.get('/settings/category/:category', settingsController.getSettingsByCategory);
-router.put('/settings',  settingsController.updateSettings);
-router.post('/settings/reset', settingsController.resetSettings);
 
-// Database operations
-router.get('/settings/database/info',settingsController.getDatabaseInfo);
-router.post('/settings/database/backup', settingsController.backupDatabase);
-router.post('/settings/database/optimize', settingsController.optimizeDatabase);
+
+
 
 module.exports = router;
