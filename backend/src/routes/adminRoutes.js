@@ -10,6 +10,7 @@ const topicController = require("../controllers/topicController");
 const levelController = require("../controllers/levelController");
 const wordController = require("../controllers/wordController");
 const statsController = require("../controllers/statsController");
+const AdminUserController = require("../controllers/adminUserController");
 
 
 const router = express.Router();
@@ -91,7 +92,12 @@ router.post("/quests/sync-all-auto", AutoQuestController.syncAllQuestsToUsers);
 
 
 
-
+router.get("/users", AdminUserController.getAllUsers);
+router.get("/users/:id", AdminUserController.getUserById);
+router.put("/users/:id", AdminUserController.updateUser);
+router.patch("/users/:id/toggle-status", AdminUserController.toggleUserStatus);
+router.post("/users/:id/reset-password", AdminUserController.resetUserPassword);
+router.get("/users/:id/stats", AdminUserController.getUserStats);
 
 
 

@@ -13,6 +13,7 @@ const PlatformController = require("../controllers/platformController");
 const ReviewController = require("../controllers/ReviewController");
 const leaderboardRoutes = require("./leaderboardRoutes");
 
+
 const router = express.Router();
 router.use(authenticate);
 
@@ -71,5 +72,9 @@ router.get("/review/sessions/:sessionId", ReviewController.getReviewSession);
 
 // Xóa bài ôn tập
 router.delete("/review/sessions/:sessionId", ReviewController.deleteReviewSession);
+
+// ========== PASSWORD RESET ROUTES ==========
+// Yêu cầu đặt lại mật khẩu
+
 
 module.exports = router;

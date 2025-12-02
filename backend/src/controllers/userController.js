@@ -344,6 +344,7 @@ static async updateDailyLogin(req, res) {
     });
   }
 }
+
 }
 
 module.exports = UserController;
